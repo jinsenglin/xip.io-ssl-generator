@@ -2,7 +2,7 @@
 
 # Specify where we will install
 # the xip.io certificate
-SSL_DIR="/tmp/ssl/xip.io"
+SSL_DIR="$(dirname $0)/$IP.xip.io"
 
 # Set the wildcarded domain
 # we want to use
