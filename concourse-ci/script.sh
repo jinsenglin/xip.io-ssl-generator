@@ -7,33 +7,35 @@ set -x
 IP=$ip
 
 # setup parameters
-SSL_DIR=$IP
-DOMAIN=$IP
-PASSPHRASE=""
-SUBJ="
-C=US
-ST=Connecticut
-O=
-localityName=New Haven
-commonName=$DOMAIN
-organizationalUnitName=
-emailAddress=
-"
+C=TW
+ST=Taiwan
+L=Taipei
+O=LIN
+OU=Jim
+CN=$IP
+ROOT_CN=root.cn.localhost
+emailAddress=admin@$CN
 
-# generate
-mkdir -p "$SSL_DIR"
-openssl genrsa -out "$SSL_DIR/$IP.key" 2048
+# create ca private key
+# file: ca-key.pem
+openssl genrsa 2048 > ca-key.pem
 
-openssl req -x509 -new -nodes -key "$SSL_DIR/$IP.key" -sha256 -days 365 -out "$SSL_DIR/ca.pem"
+# create ca self-signed certificate
+# file: root.crt
+openssl req -new -sha256 -x509 -nodes -days 3600 -key ca-key.pem -out root.crt -subj "/C=$C/ST=$ST/L=$L/O=$O/OU=$OU/CN=$ROOT_CN/emailAddress=$emailAddress"
 
-openssl req -new -subj "$(echo -n "$SUBJ" | tr "\n" "/")" -key "$SSL_DIR/$IP.key" -out "$SSL_DIR/$IP.csr" -passin pass:$PASSPHRASE
-openssl x509 -req -days 365 -in "$SSL_DIR/$IP.csr" -signkey "$SSL_DIR/$IP.key" -out "$SSL_DIR/$IP.crt"
-openssl rsa -pubout -in "$SSL_DIR/$IP.key" -out "$SSL_DIR/$IP.pub"
+# create (web) server private key and csr for $CN
+# file: $CN.server.key
+# file: $CN.server.csr
+openssl req -new -sha256 -keyout $CN.server.key -out $CN.server.csr -days 365 -newkey rsa:2048 -nodes -subj "/C=$C/ST=$ST/L=$L/O=$O/OU=$OU/CN=$CN/emailAddress=$emailAddress"
+
+# create (web) server certificate by using ca private key to sign server csr for $CN
+# file: $CN.server.crt
+openssl x509 -req -days 365 -sha1 -CA root.crt  -CAkey ca-key.pem -CAcreateserial -in $CN.server.csr -out $CN.server.crt
 
 # print results
-ls $SSL_DIR
-cat $SSL_DIR/$IP.key
-cat $SSL_DIR/ca.pem
-cat $SSL_DIR/$IP.csr
-cat $SSL_DIR/$IP.crt
-cat $SSL_DIR/$IP.pub
+cat ca-key.pem
+cat root.crt
+cat $CN.server.key
+cat $CN.server.csr
+cat $CN.server.crt
